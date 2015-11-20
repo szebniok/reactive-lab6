@@ -1,4 +1,4 @@
-name := """reactive-routers"""
+name := """reactive-lab6"""
 
 version := "1.0"
 
