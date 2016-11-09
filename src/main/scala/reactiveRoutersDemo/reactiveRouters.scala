@@ -58,12 +58,27 @@ class Worker extends Actor with ActorLogging {
 
 }
 
+object Client {
+  case object Init
+}
+
+class Client extends Actor {
+  import Client._
+
+  def receive = LoggingReceive {
+    case Init  =>
+       val master = context.actorOf(Props(classOf[Master]), "master")
+       master ! Worker.Work("some work")     
+
+  }
+}
+
 object AuctionApp extends App {
 
   val system = ActorSystem("ReactiveRouters")
 
-  val master = system.actorOf(Props(classOf[Master]), "master")
-
-  master ! Worker.Work("some work")
+  val client = system.actorOf(Props(classOf[Client]), "client")
+  
+  client ! Client.Init
 
 }
