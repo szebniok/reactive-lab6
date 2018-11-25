@@ -70,3 +70,14 @@ object RoutersDemo extends App {
   client ! Client.Init
 
 }
+
+object SimpleRouterDemo extends App {
+
+  val system = ActorSystem("ReactiveRouters")
+
+  val workers = system.actorOf(BroadcastPool(5).props(Props[Worker]), "workersRouter")
+
+  workers ! Worker.Work("some work")
+  workers ! Worker.Work("some work 2")
+
+}
