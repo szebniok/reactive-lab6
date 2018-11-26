@@ -14,5 +14,5 @@ sbt "runMain agh.reactive.routers_demo.WorkHttpClusterApp 9003" &
 
 
 # start gatling tests
-sbt gatling-it:test
-sbt gatling-it:lastReport
+#sbt gatling-it:test
+#sbt gatling-it:lastReport

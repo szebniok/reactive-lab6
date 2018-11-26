@@ -3,7 +3,7 @@ import akka.actor.{ActorSystem, Props}
 import akka.cluster.routing.{ClusterRouterPool, ClusterRouterPoolSettings}
 import akka.http.scaladsl.server.{HttpApp, Route}
 import akka.pattern.ask
-import akka.routing.{ConsistentHashingPool, RoundRobinPool}
+import akka.routing.RoundRobinPool
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 
@@ -34,11 +34,9 @@ class WorkHttpServerInCluster() extends HttpApp with JsonSupport {
     config.getConfig("cluster-default")
   )
 
-  val workers = system.actorOf(RoundRobinPool(5).props(Props[HttpWorker]), "workersRouter")
-
-  val workerRouter = system.actorOf(
+  val workers = system.actorOf(
     ClusterRouterPool(
-      ConsistentHashingPool(0),
+      RoundRobinPool(0),
       ClusterRouterPoolSettings(totalInstances = 100, maxInstancesPerNode = 3, allowLocalRoutees = false)
     ).props(Props[HttpWorker]),
     name = "clusterWorkerRouter"
