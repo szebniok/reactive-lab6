@@ -78,6 +78,6 @@ object SimpleRouterDemo extends App {
   val workers = system.actorOf(BroadcastPool(5).props(Props[Worker]), "workersRouter")
 
   workers ! Worker.Work("some work")
-  workers ! Worker.Work("some work 2")
+  //workers ! Worker.Work("some work 2")
 
 }

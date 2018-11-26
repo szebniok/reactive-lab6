@@ -2,14 +2,14 @@ package agh.reactive.routers_demo
 
 import java.net.URI
 
-import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import akka.event.LoggingReceive
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.server.{HttpApp, Route}
 import akka.pattern.ask
 import akka.routing.RoundRobinPool
 import akka.util.Timeout
-import spray.json.{DefaultJsonProtocol, JsString, JsValue, JsonFormat}
+import spray.json.{DefaultJsonProtocol, JsString, JsValue, JsonFormat, RootJsonFormat}
 
 import scala.concurrent.duration._
 
@@ -45,7 +45,7 @@ trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
 }
 
 object WorkHttpApp extends App {
-  new WorkHttpServer().startServer("localhost", args(0).toInt)
+  new WorkHttpServer().startServer("localhost", 9000)
 }
 
 class WorkHttpServer extends HttpApp with JsonSupport {
@@ -60,7 +60,7 @@ class WorkHttpServer extends HttpApp with JsonSupport {
       post {
         entity(as[HttpWorker.Work]) { work =>
           complete {
-            (workers ? work).mapTo[String]
+            (workers ? work).mapTo[HttpWorker.Response]
           }
         }
       }
