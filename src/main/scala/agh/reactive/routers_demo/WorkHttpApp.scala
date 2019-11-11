@@ -12,6 +12,7 @@ import akka.util.Timeout
 import spray.json.{DefaultJsonProtocol, JsString, JsValue, JsonFormat, RootJsonFormat}
 
 import scala.concurrent.duration._
+import scala.util.Try
 
 object HttpWorker {
   case class Work(work: String)
@@ -45,7 +46,7 @@ trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
 }
 
 object WorkHttpApp extends App {
-  new WorkHttpServer().startServer("localhost", 9000)
+  new WorkHttpServer().startServer("localhost", Try(args(0).toInt).getOrElse(9000))
 }
 
 class WorkHttpServer extends HttpApp with JsonSupport {
