@@ -1,13 +1,15 @@
 package agh.reactive.routers_demo
-import io.gatling.core.Predef.{Simulation, StringBody, jsonFile, rampUsers, scenario, _}
-import io.gatling.http.Predef.http
 
 import scala.concurrent.duration._
 
+import io.gatling.core.Predef._
+import io.gatling.http.Predef._
+
 class HttpWorkerGatlingTest extends Simulation {
 
-  val httpProtocol = http  //values here are adjusted to cluster_demo.sh script
-    .baseUrls("http://localhost:9001", "http://localhost:9002", "http://localhost:9003")
+  val httpProtocol = http //values here are adjusted to cluster_demo.sh script
+    .baseUrl("http://localhost:9001")
+    //baseUrls("http://localhost:9001", "http://localhost:9002", "http://localhost:9003")
     .acceptHeader("text/plain,text/html,application/json,application/xml;")
     .userAgentHeader("Mozilla/5.0 (Windows NT 5.1; rv:31.0) Gecko/20100101 Firefox/31.0")
 
@@ -19,9 +21,8 @@ class HttpWorkerGatlingTest extends Simulation {
         .body(StringBody("""{ "work": "${work}" }"""))
         .asJson
     )
-    .pause(5)
 
   setUp(
-    scn.inject(rampUsers(7).during(1.minutes))
+    scn.inject(constantConcurrentUsers(1).during(10.seconds))
   ).protocols(httpProtocol)
 }

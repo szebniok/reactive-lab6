@@ -22,16 +22,16 @@ object HttpWorker {
 class HttpWorker extends Actor with ActorLogging {
   import HttpWorker._
 
-  def receive: Receive = LoggingReceive {
-    case Work(a) =>
-      log.info(s"I got to work on $a")
-      sender ! Response("Done")
+  def receive: Receive = LoggingReceive { case Work(a) =>
+    Thread.sleep(1000) // simulate some intensive blocking work
+    log.info(s"I am working on: $a")
+    sender ! Response("Done")
   }
 
 }
 
 trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
-  implicit val workerWork = jsonFormat1(HttpWorker.Work)
+  implicit val workerWork     = jsonFormat1(HttpWorker.Work)
   implicit val workerResponse = jsonFormat1(HttpWorker.Response)
 
   //custom formatter just for example

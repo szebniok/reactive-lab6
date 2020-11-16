@@ -13,7 +13,7 @@ curl -X POST \
   -H 'Content-Type: application/json' \
   -H 'cache-control: no-cache' \
   -d '{
-	"work": "some work to do"
+	"work": "clean my room"
   }'
 ```
 
