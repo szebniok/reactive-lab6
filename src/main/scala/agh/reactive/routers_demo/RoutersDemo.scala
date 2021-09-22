@@ -1,83 +1,75 @@
 package agh.reactive.routers_demo
 
-import akka.actor._
+import akka.actor.typed._
+import akka.actor.typed.scaladsl.{Behaviors, Routers}
 import akka.event.LoggingReceive
 import akka.routing._
 
 object Worker {
   case class Work(work: String)
-}
 
-class Worker extends Actor with ActorLogging {
-  import Worker._
-
-  def receive: Receive = LoggingReceive {
-    case Work(a) =>
-      log.info(s"I got to work on $a")
-      context.stop(self)
-  }
-
+  def apply(): Behavior[Work] =
+    Behaviors.receive[Work](
+      (context, msg) =>
+        msg match {
+          case Work(work) =>
+            context.log.info(s"I got to work on $work")
+            Behaviors.stopped
+      }
+    )
 }
 
 object Master {
   case class WorkToDistribute(work: String)
-}
 
-class Master extends Actor with ActorLogging {
   val nbOfRoutees = 5
 
-  val routees = Vector.fill(nbOfRoutees) {
-    val r = context.actorOf(Props[Worker])
-    context watch r // we subscribe for akka.actor.Terminated messages, we want to know when some worker was terminated
-    ActorRefRoutee(r)
-  }
+  def apply(): Behavior[WorkToDistribute] = Behaviors.setup { context =>
+    val pool   = Routers.pool(poolSize = nbOfRoutees)(Worker())
+    val router = context.spawn(pool, "worker-pool")
+    context.watch(router)
 
-  def receive: Receive = master(Router(BroadcastRoutingLogic(), routees))
-
-  def master(router: Router): Receive = LoggingReceive {
-    case Master.WorkToDistribute(w) =>
-      router.route(Worker.Work(w), sender())
-
-    case Terminated(a) => // some worker was terminated
-      val r = router.removeRoutee(a)
-      if (r.routees.isEmpty)
-        context.system.terminate
-      else
-        context.become(master(r))
+    Behaviors
+      .receiveMessage[WorkToDistribute] {
+        case WorkToDistribute(work) =>
+          router ! Worker.Work(work)
+          Behaviors.same
+      }
+      .receiveSignal {
+        case (context, Terminated(router)) =>
+          context.system.terminate()
+          Behaviors.stopped
+      }
   }
 }
 
 object Client {
   case object Init
-}
 
-class Client extends Actor {
-  import Client._
-
-  def receive: Receive = LoggingReceive {
-    case Init =>
-      val master = context.actorOf(Props(classOf[Master]), "master")
-      master ! Master.WorkToDistribute("some work")
-  }
+  def apply(): Behavior[Init.type] =
+    Behaviors.receive(
+      (context, msg) =>
+        msg match {
+          case Init =>
+            val master = context.spawn(Master(), "master")
+            master ! Master.WorkToDistribute("some work")
+            Behaviors.same
+      }
+    )
 }
 
 object RoutersDemo extends App {
-
-  val system = ActorSystem("ReactiveRouters")
-
-  val client = system.actorOf(Props(classOf[Client]), "client")
-
+  val system = ActorSystem(Behaviors.empty, "ReactiveRouters")
+  val client = system.systemActorOf(Client(), "client")
   client ! Client.Init
-
 }
 
 object SimpleRouterDemo extends App {
+  val system = ActorSystem(Behaviors.empty, "ReactiveRouters")
 
-  val system = ActorSystem("ReactiveRouters")
-
-  val workers = system.actorOf(BroadcastPool(5).props(Props[Worker]), "workersRouter")
+  val pool    = Routers.pool(poolSize = 5)(Worker()).withBroadcastPredicate(_ => true)
+  val workers = system.systemActorOf(pool, "broadcast-workers")
 
   workers ! Worker.Work("some work")
-  //workers ! Worker.Work("some work 2")
-
+//  workers ! Worker.Work("some work 2")
 }
