@@ -18,9 +18,14 @@ import scala.concurrent.duration._
 import scala.io.StdIn
 import scala.util.Try
 
+/**
+ * Basically a [[Worker]] that responds to the sender and does not stop
+ */
 object HttpWorker {
   sealed trait Command
   case class Work(work: String, replyTo: ActorRef[WorkerResponse]) extends Command
+
+  case class WorkerResponse(work: String)
 
   def apply(): Behavior[Command] =
     Behaviors.receive(
@@ -34,13 +39,11 @@ object HttpWorker {
     )
 }
 
-case class WorkerResponse(work: String)
-
 trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
   case class WorkDTO(work: String)
 
   implicit val workerDtoWork  = jsonFormat1(WorkDTO)
-  implicit val workerResponse = jsonFormat1(WorkerResponse)
+  implicit val workerResponse = jsonFormat1(HttpWorker.WorkerResponse)
 
   //custom formatter just for example
   implicit val uriFormat = new JsonFormat[java.net.URI] {
@@ -50,7 +53,6 @@ trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
       case _             => throw new RuntimeException("Parsing exception")
     }
   }
-
 }
 
 object WorkHttpApp extends App {
@@ -58,6 +60,9 @@ object WorkHttpApp extends App {
   workHttpServer.run(Try(args(0).toInt).getOrElse(9000))
 }
 
+/**
+ * The server that distributes all of the requests to the local workers spawned via router pool.
+ */
 class WorkHttpServer extends JsonSupport {
 
   implicit val system           = ActorSystem(Behaviors.empty, "ReactiveRouters")
@@ -81,7 +86,7 @@ class WorkHttpServer extends JsonSupport {
 
   def run(port: Int): Unit = {
     val bindingFuture = Http().newServerAt("localhost", port).bind(routes)
-    println(s"Server now online. Please navigate to http://localhost:8080/hello\nPress RETURN to stop...")
+    println(s"Server now online. Please navigate to http://localhost:$port/hello\nPress RETURN to stop...")
     StdIn.readLine() // let it run until user presses return
     bindingFuture
       .flatMap(_.unbind()) // trigger unbinding from the port

@@ -14,6 +14,10 @@ import scala.concurrent.duration._
 import scala.io.StdIn
 import scala.util.Try
 
+/**
+ * Basically a [[HttpWorker]] that registers itself with the receptionist
+ * @see https://doc.akka.io/docs/akka/current/typed/actor-discovery.html#receptionist
+ */
 object RegisteredHttpWorker {
   val HttpWorkerKey: ServiceKey[HttpWorker.Command] = ServiceKey("HttpWorker")
 
@@ -25,13 +29,16 @@ object RegisteredHttpWorker {
         msg match {
           case HttpWorker.Work(work, replyTo) =>
             context.log.info(s"I got to work on $work")
-            replyTo ! WorkerResponse("Done")
+            replyTo ! HttpWorker.WorkerResponse("Done")
             Behaviors.same
       }
     )
   }
 }
 
+/**
+ * Spawns an actor system that will connect with the cluster and spawn `instancesPerNode` workers
+ */
 class HttpWorkersNode {
   private val instancesPerNode = 3
   private val config           = ConfigFactory.load()
@@ -43,11 +50,11 @@ class HttpWorkersNode {
   )
 
   for (i <- 0 to instancesPerNode) system.systemActorOf(RegisteredHttpWorker(), s"worker$i")
-  //  def apply(): Behavior[Nothing] = Behaviors.setup { context =>
-//    Behaviors.same
-//  }
 }
 
+/**
+ * Spawns a seed node
+ */
 object ClusterNodeApp extends App {
   private val config = ConfigFactory.load()
 
@@ -67,6 +74,12 @@ object WorkHttpClusterApp extends App {
   workHttpServerInCluster.run(args(0).toInt)
 }
 
+/**
+ * The server that distributes all of the requests to the registered workers in the cluster via the group router.
+ * Will spawn `httpWorkersNodeCount` [[HttpWorkersNode]] instances that will each spawn `instancesPerNode`
+ * [[RegisteredHttpWorker]] instances giving us `httpWorkersNodeCount` * `instancesPerNode` workers in total.
+ * @see https://doc.akka.io/docs/akka/current/typed/routers.html#group-router
+ */
 class WorkHttpServerInCluster() extends JsonSupport {
   private val config               = ConfigFactory.load()
   private val httpWorkersNodeCount = 10
@@ -100,7 +113,7 @@ class WorkHttpServerInCluster() extends JsonSupport {
 
   def run(port: Int): Unit = {
     val bindingFuture = Http().newServerAt("localhost", port).bind(routes)
-    println(s"Server now online. Please navigate to http://localhost:8080/hello\nPress RETURN to stop...")
+    println(s"Server now online. Please navigate to http://localhost:$port/hello\nPress RETURN to stop...")
     StdIn.readLine() // let it run until user presses return
     bindingFuture
       .flatMap(_.unbind()) // trigger unbinding from the port

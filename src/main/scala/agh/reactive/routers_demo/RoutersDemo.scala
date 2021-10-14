@@ -2,9 +2,10 @@ package agh.reactive.routers_demo
 
 import akka.actor.typed._
 import akka.actor.typed.scaladsl.{Behaviors, Routers}
-import akka.event.LoggingReceive
-import akka.routing._
 
+/**
+ * Simple worker that logs the content of his message and stops
+ */
 object Worker {
   case class Work(work: String)
 
@@ -19,6 +20,10 @@ object Worker {
     )
 }
 
+/**
+ * Master that spawns `nbOfRoutees` workers via local pool router and distributes the work between them
+ * @see https://doc.akka.io/docs/akka/current/typed/routers.html#pool-router
+ */
 object Master {
   case class WorkToDistribute(work: String)
 
@@ -43,6 +48,9 @@ object Master {
   }
 }
 
+/**
+ * Demonstrates the `Master` behaviour
+ */
 object Client {
   case object Init
 
@@ -58,12 +66,18 @@ object Client {
     )
 }
 
+/**
+ * Runs the Client actor that demonstrates the behaviour of local pool routers
+ */
 object RoutersDemo extends App {
   val system = ActorSystem(Behaviors.empty, "ReactiveRouters")
   val client = system.systemActorOf(Client(), "client")
   client ! Client.Init
 }
 
+/**
+ * Simple app that demonstrates the behaviour of pool router's broadcast mechanism
+ */
 object SimpleRouterDemo extends App {
   val system = ActorSystem(Behaviors.empty, "ReactiveRouters")
 
@@ -71,5 +85,5 @@ object SimpleRouterDemo extends App {
   val workers = system.systemActorOf(pool, "broadcast-workers")
 
   workers ! Worker.Work("some work")
-//  workers ! Worker.Work("some work 2")
+//  workers ! Worker.Work("some work 2") // won't work since all of the actors inside the pool have received a message and stopped
 }
